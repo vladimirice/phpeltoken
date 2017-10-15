@@ -9,7 +9,7 @@ RUN apt-get update \
     && pecl install xdebug && pecl install apcu\
     && docker-php-ext-enable xdebug apcu
 
-WORKDIR /var/www/eltoken
+WORKDIR /var/www/phpeltoken.com
 
 RUN curl -sS https://getcomposer.org/installer | php
 RUN mv composer.phar /usr/bin/composer

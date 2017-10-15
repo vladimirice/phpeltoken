@@ -33,3 +33,12 @@ services:
     # AppBundle\Service\ExampleService:
     #     arguments:
     #         $someArgument: 'some_value'
+
+    app.blockchain:
+        class: AppBundle\Service\Blockchain
+        public: true
+        arguments:
+            - '%kernel.project_dir%'
+    app.repository:
+        class: AppBundle\Service\Repository
+        public: true

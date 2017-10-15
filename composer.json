@@ -1,7 +1,9 @@
 {
     "name": "vladimir/phpeltoken.com",
-    "license": "proprietary",
+    "license": "open",
     "type": "project",
+    "minimum-stability" : "dev",
+    "prefer-stable" : true,
     "autoload": {
         "psr-4": {
             "AppBundle\\": "src/AppBundle"
@@ -20,8 +22,9 @@
         ]
     },
     "require": {
-        "php": ">=5.5.9",
+        "php": ">=7.1.0",
         "doctrine/doctrine-bundle": "^1.6",
+        "doctrine/doctrine-migrations-bundle": "^1.0",
         "doctrine/orm": "^2.5",
         "incenteev/composer-parameter-handler": "^2.0",
         "sensio/distribution-bundle": "^5.0.19",
@@ -33,7 +36,9 @@
         "twig/twig": "^1.0||^2.0"
     },
     "require-dev": {
+        "endouble/symfony3-custom-coding-standard": "^2.17",
         "sensio/generator-bundle": "^3.0",
+        "squizlabs/php_codesniffer": "2.*",
         "symfony/phpunit-bridge": "^3.0"
     },
     "scripts": {

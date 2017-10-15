@@ -16,6 +16,12 @@ d_db:
 d_php:
 	docker-compose exec --user=www-data php /bin/bash
 
+d_example:
+	docker-compose exec --user=www-data php bin/console app:example
+
+docker_doctrine_migrations_generate d_dmg:
+	docker-compose exec -T --user=www-data php bin/console doctrine:migrations:generate
+
 docker_doctrine_migrations_difference d_dmd:
 	docker-compose exec -T --user=www-data php bin/console doctrine:migrations:diff
 
@@ -33,6 +39,10 @@ d_deploy_prod d_dep:
 
 docker_init_dev d_init_dev:
 	docker-compose exec -T --user=www-data php composer install -o
+	docker-compose exec -T --user=www-data php bin/console doctrine:database:drop --if-exists --force
+	docker-compose exec -T --user=www-data php bin/console doctrine:database:create --if-not-exists
+
+docker_init_db d_i_d:
 	docker-compose exec -T --user=www-data php bin/console doctrine:database:drop --if-exists --force
 	docker-compose exec -T --user=www-data php bin/console doctrine:database:create --if-not-exists
 
