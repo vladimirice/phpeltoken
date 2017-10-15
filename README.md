@@ -1,13 +1,13 @@
-phpeltoken.com
-=======
+# phpeltoken.com
 
 A blockchain sample project based on PHP Symfony framework.
 
 *Project goal* - education only.
 
-Links:
+1. [Installation guide](INSTALLATION.md)
+2. [External links](#external-links)
+
 TODO
 
-### Installation
-
-docker-compose file is adapt only for docker mac xhyve driver.
+### External links
+* https://www.igvita.com/2014/05/05/minimum-viable-block-chain/

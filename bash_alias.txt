@@ -1,0 +1,2 @@
+alias ds='docker-machine start && eval $(docker-machine env default)'
+alias de='eval $(docker-machine env default)'

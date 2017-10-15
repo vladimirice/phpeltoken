@@ -5,12 +5,8 @@ set -e
 CUSER="www-data"
 MYUID=`stat -c "%u" .`
 
-mkdir -p /root/.ssh
-chmod 600 -R /root/.ssh
-
 mkdir -p /var/www/.composer/
 chown -R www-data: /var/www/.composer/
-chown -R www-data: /var/www/.config
 
 if [[ "$MYUID" -gt '0' && "$MYUID" != `id -u ${CUSER}` ]]; then
     usermod -u ${MYUID} ${CUSER}

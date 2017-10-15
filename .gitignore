@@ -18,3 +18,4 @@ app/config/parameters.yml
 
 tests/_output/*
 src/AppBundle/tests/_output/
+/etc/docker/volume/*
