@@ -1,0 +1,137 @@
+#mac version
+version: '2'
+
+networks:
+    eltoken_network:
+        ipam:
+            driver: default
+            config:
+                - subnet: 173.18.211.0/24
+
+services:
+    nginx:
+        container_name: eltoken_nginx
+        image: nginx:stable
+        hostname: eltoken.dev
+        links:
+            - php
+        volumes:
+            - .:/var/www/eltoken
+            - ~/Projects/internet-grad.ru:/var/www/internet-grad.ru
+            - ./app/config/nginx:/etc/nginx/conf.d
+        networks:
+            eltoken_network:
+                ipv4_address: 173.18.211.3
+        expose:
+            - "80"
+        ports:
+            - "80:80"
+    php:
+        container_name: mylead_php
+        build: ./etc/docker/php
+        depends_on:
+            - db
+            - redis
+            - mailcatcher
+        links:
+            - db
+            - db_test
+            - redis
+            - rabbit
+            - mailcatcher
+        volumes:
+            - .:/var/www/mylead.io
+            - ~/Projects/internet-grad.ru:/var/www/internet-grad.ru
+            - ~/.ssh:/var/www/.ssh:ro
+            - .:/var/www/mylead.io:cached
+            - ./app/config/supervisor/dev:/etc/supervisor/conf.d
+        networks:
+            eltoken_network:
+                ipv4_address: 173.18.211.2
+        expose:
+            - "9000"
+        extra_hosts:
+            - "postgres.mylead.dev:173.18.211.4"
+            - "mylead.dev:173.18.211.3"
+            - "internet-grad.dev:173.18.211.3"
+            - "redirect.mylead.dev:173.18.211.3"
+            - "redirect-test.mylead.dev:173.18.211.3"
+            - "order.mylead.dev:173.18.211.3"
+            - "order-test.mylead.dev:173.18.211.3"
+            - "mailcatcher.mylead.dev:173.18.211.8"
+        environment:
+            # both variables needed to debug command line scripts
+            XDEBUG_CONFIG: remote_host=10.254.254.254
+            PHP_IDE_CONFIG: "serverName=localhost"
+            SYMFONY__TEMPLATING__HELPER__CODE__FILE_LINK_FORMAT: subl://open?url=file://%%f&line=%%l&/var/www/mylead.io/>${PWD}/
+    db:
+        container_name: mylead_postgres
+        hostname: postgres.mylead.dev
+        image: postgres
+        environment:
+            - DEBUG=false
+            - DB_USER=guru
+            - DB_PASS=guru
+            - DB_NAME=fly
+        volumes:
+            - /Users/vladimir/docker/postgresql:/var/lib/postgresql
+        networks:
+            eltoken_network:
+                ipv4_address: 173.18.211.4
+        expose:
+            - "5432"
+        ports:
+            - "5432:5432"
+    db_test:
+        container_name: mylead_postgres_test
+        hostname: postgres-test.mylead.dev
+        image: postgres
+        environment:
+            - DEBUG=false
+            - DB_USER=guru
+            - DB_PASS=guru
+            - DB_NAME=fly
+        volumes:
+            - /Users/vladimir/docker/postgresql:/var/lib/postgresql
+        networks:
+            eltoken_network:
+                ipv4_address: 173.18.211.7
+        expose:
+            - "5432"
+        ports:
+            - "54321:5432"
+    redis:
+        container_name: mylead_redis
+        hostname: redis.mylead.dev
+        image: redis:3.2
+        expose:
+            - "6379"
+        networks:
+            eltoken_network:
+                ipv4_address: 173.18.211.5
+    rabbit:
+         container_name: mylead_rabbit
+         hostname: rabbit.mylead.dev
+         image: rabbitmq:3.6.10-management
+         environment:
+            - RABBITMQ_DEFAULT_USER = guest
+            - RABBITMQ_DEFAULT_PASS = guest
+         expose:
+             - "5672"
+         ports:
+            - "5672:5672"
+            - "15672:15672"
+         networks:
+            eltoken_network:
+                ipv4_address: 173.18.211.6
+    mailcatcher:
+        container_name: mylead_mailcatcher
+        image: schickling/mailcatcher:latest
+        expose:
+            - "1080"
+            - "1025"
+        ports: ["1080:1080"]
+        hostname: mailcatcher.mylead.dev
+        networks:
+            eltoken_network:
+                ipv4_address: 173.18.211.8
