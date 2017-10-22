@@ -1,0 +1,11 @@
+#AppBundle\Entity\Blockchain\Wallet:
+#    creator_wallet:
+#        init: <walletInit('creator')>
+#    alice_wallet:
+#        init: <walletInit('alice')>
+#    bob_wallet:
+#        init: <walletInit('bob')>
+#    anna_wallet:
+#        init: <walletInit('anna')>
+#    charlie_wallet:
+#        init: <walletInit('charlie')>

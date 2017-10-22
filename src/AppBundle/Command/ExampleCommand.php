@@ -25,12 +25,15 @@ class ExampleCommand extends ContainerAwareCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+
+
+        exit;
         $blockchain = $this->getContainer()->get('app.blockchain');
         $repo = $this->getContainer()->get('app.repository');
 
-        $transactionToAlice = new Transaction($repo->getCreatorAddressHash(), $repo->getAliceAddressHash(), 10);
+        $transactionToAlice = new Transaction($repo->getCreatorPublicKey(), $repo->getAliceAddressHash(), 10);
         $blockchain->addTransaction($transactionToAlice);
-        $transactionToBob = new Transaction($repo->getCreatorAddressHash(), $repo->getBobAddressHash(), 10);
+        $transactionToBob = new Transaction($repo->getCreatorPublicKey(), $repo->getBobAddressHash(), 10);
         $blockchain->addTransaction($transactionToBob);
 
         $st = microtime(1);
@@ -38,7 +41,7 @@ class ExampleCommand extends ContainerAwareCommand
 
         echo 'Mining time is (s): ' . (string) (microtime(1) - $st) . "\r\n";
 
-        $blockchain->createNewBlockAndAddToChain($nextProof, $repo->getCreatorAddressHash());
+        $blockchain->createNewBlockAndAddToChain($nextProof, $repo->getCreatorPublicKey());
 
         print_r($blockchain->getChain());
     }

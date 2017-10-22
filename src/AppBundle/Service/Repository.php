@@ -37,7 +37,7 @@ class Repository
         return $this->getAddressHash($this->aliceAddress);
     }
 
-    public function getCreatorAddressHash()
+    public function getCreatorPublicKey()
     {
         return $this->getAddressHash($this->creatorAddress);
     }

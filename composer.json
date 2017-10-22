@@ -36,10 +36,14 @@
         "twig/twig": "^1.0||^2.0"
     },
     "require-dev": {
+        "doctrine/data-fixtures": "^1.2",
         "endouble/symfony3-custom-coding-standard": "^2.17",
+        "hautelook/alice-bundle": "^2.0@beta",
+        "nelmio/alice": "^3.0@beta",
         "sensio/generator-bundle": "^3.0",
         "squizlabs/php_codesniffer": "2.*",
-        "symfony/phpunit-bridge": "^3.0"
+        "symfony/phpunit-bridge": "^3.0",
+        "theofidry/alice-data-fixtures": "^1.0@beta"
     },
     "scripts": {
         "symfony-scripts": [

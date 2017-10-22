@@ -39,3 +39,14 @@ monolog:
 
 #swiftmailer:
 #    delivery_addresses: ['me@example.com']
+
+hautelook_alice:
+    fixtures_path: 'Resources/fixtures/orm' # Path to which to look for fixtures relative to the project directory or the bundle path.
+
+services:
+    app.faker.provider.ico_company_score:
+        class: AppBundle\Faker\Provider\WalletProvider
+        public: true
+        arguments: ['@nelmio_alice.faker.generator']
+        tags:
+            { name: nelmio_alice.faker.provider }

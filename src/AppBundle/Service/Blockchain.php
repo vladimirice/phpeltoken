@@ -20,6 +20,11 @@ class Blockchain
     private $systemFakeSenderAddress = '0';
     private $minerReward = 25;
 
+    /**
+     * @var TransactionService
+     */
+    private $transactionService;
+
     private const GENESIS_BLOCK_INDEX = 1;
 
     private const GENESIS_PROOF = 5;
@@ -28,22 +33,21 @@ class Blockchain
 
     /**
      * Blockchain constructor.
-     * @param string $projectDir
+     * @param string             $projectDir
+     * @param TransactionService $transactionService
      */
-    public function __construct(string $projectDir)
-    {
+    public function __construct(
+        string $projectDir,
+        TransactionService $transactionService
+    ) {
         $this->projectDir = $projectDir;
+        $this->transactionService = $transactionService;
 
         if ($this->load() === true) {
             return;
         }
 
-        // Create the genesis block with the genesis transaction
-        $transaction = new Transaction(
-            $this->systemFakeSenderAddress,
-            hash('sha256', self::CREATOR_ADDRESS),
-            self::GENESIS_EMISSION
-        );
+        $this->transactionService->addGenesisTransaction();
 
         $this->addTransaction($transaction);
 
