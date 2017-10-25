@@ -5,103 +5,86 @@ A blockchain sample project based on PHP Symfony framework.
 *Goal - to implement basic blockchain ideas in order to understand them better.*
 
 1. [Installation guide](INSTALLATION.md)
-2. [External links](#external-links)
+2. [How to use](#how-to-use)
+3. [Structure](#structure)
+4. [Programming](#programming-features)
+5. [Restrictions](#restrictions)
+6. [Tags](#tags)
+7. [TODO](#todo)
+8. [External links](#external-links)
 
-Very basic example:
+## How to use:
+```shell
+make d_init_blockchain
+```
+
+This command creates genesis block and a couple of sample blocks. At the end it prints
+available inputs (input transactions) for every sample wallet.
+
+Other commands:
 
 ```shell
-make d_example
+make d_check_blockchain_validity
+make d_check_transaction_pool_validity
+make d_show_available_input
 ```
 
-## Transactions
-
-### Transaction steps
-1. Node broadcasts new transaction to the network
-2. Other nodes receive transaction and add it to transaction pending list
-3. Node-miner wants to accept this transaction (or set of transactions)
-4. Node miner calculates proof of future block
-5. In parallel miner checks if somebody already calculated the same block.
-6. After success calculation node miner broadcasts new block to the network
-7. Other nodes receives the block, validates it and add it to their chain.
-
-
-### Transaction validation
-1. There is a valid block.
-2. There are N amount of blocks right after the block (long chain).
-3. There are a valid transaction input outputs
-4. Sender signature is ok
-5. Transaction hash is unique
-6. Miner reward validation
-7. Miner commission validation
-
-### Simplifications
-1. Sender and recipient addresses are just pure public keys without any other encoding
-
-
-## Node types
-1. Listener - everybody
-2. Broadcaster - wallet
-3. Miner
-
-## Node
-1. Fresh node receives all the chain and validate all the chain.
-2. Next time node validates only new transactions and block (based on their timestamps)
-
-
-## Components location
-
-Transaction class
-```php
-src/AppBundle/Model/Transaction.php
+In order to publish new transaction run interactive command. Choose sender, recipient address
+from the list of sample wallets and type in amount. It must be possible to use full amount of one of available inputs.
+```shell
+make d_publish_transaction
 ```
 
+In order to mine new block with current transaction pool run interactive command. Choose miner.
+```shell
+make d_mine_block
+```
 
+## Programming features:
+* Code sniffer and PHP Extended PHPStorm validations. All files are "green marked"
+* Custom exception classes, ex. AppBundle/Exception/Blockchain/BlockchainDoesNotExistException.php
+* fixtures and migrations for postgresql
+* small methods - one task for everyone
+* Block and transaction hash calculations are inside services - models are free from these details.
+* DDD-featured method, ex.: 
+\AppBundle\Model\Blockchain\Transaction::isRecipient
+\AppBundle\Service\Blockchain\TransactionService::serializeTransaction
+\AppBundle\Service\Blockchain\TransactionService::serializeTransactionForHash
 
-Genesis transaction has only output and no inputs
+## Structure
 
+Models - condition only, no business logic, DDD features like named methods isRecipient
+* AppBundle/Model/Blockchain/Block.php
+* AppBundle/Model/Blockchain/Transaction.php
 
-1. Sender, receiver, amount fields
-2. Sender signature.
-3. Transaction hash
-4. Block hash - in order to find the block quicker
+DTO:
+* AppBundle/Model/Blockchain/InputOutputDto.php
 
+Services (business logic):
+* AppBundle/Service/Blockchain.php - for blocks as chain. It includes other services.
+* AppBundle/Service/Blockchain/BlockService.php - for separate block (not blocks!). It includes TransactionService.
+* AppBundle/Service/Blockchain/TransactionService.php - for pool of transactions
+* AppBundle/Service/Blockchain/MiningService.php - mining-related logic
+* AppBundle/Service/Blockchain/WalletService.php - wallet-related logic (fetch only)
+* AppBundle/Service/Security/SecurityService.php - asymmetric cryptography related logic
 
+Persistence:
+* wallets and serialized blocks - in postgreSQL
+* transaction pool - in redis (just for convenience)
 
+## Restrictions:
+* It is possible to transact only full amount of coins of previous transaction.
+* Only integer amount of transaction
 
+## Tags:
+* #refactor tag marks places for future refactoring
 
-## To implement:
-
-### Consensus and validations
-* Longest valid chain is authoritative
-* Sum of deposit and withdrawal must be 0
-* Do not allow overdraft
-* double transaction resistance
-* public-private key transactions signature
-* Link proof of work and related transactions
-* Miner himself creates a lot of small transactions and receive rewards - how to resist
-
-### Block validity
-* Check block hash
-* Check is transaction correct
-* Check chain is correct by previous block checks
-
-### Node scenarios
-1. Download chains
-2. Validate chains - store a valid copy
-3. Announce their appearance in network
-4. Receive new blocks and validate them
-4. Start to listen for the new transactions
-5. Mine blocks and broadcast new blocks to the network
-6. Blockchain fork
-
-### Proof-of-work
-* An algorithm to decrease block proof time dispersion 
-
-### Transactions
-* Transactions with multiple inputs and outputs
-
-### API
-* wallets
+## TODO
+* Transactions pool as separate class not inside persistence.
+* move blockchain check to separate checker.
+* place blockchain settings (ex miner reward) separately.
+* REST API
+* Unit tests
 
 ### External links
 * [Minimum Viable Block Chain](https://www.igvita.com/2014/05/05/minimum-viable-block-chain/)

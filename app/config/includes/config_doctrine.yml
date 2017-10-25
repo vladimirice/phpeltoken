@@ -8,6 +8,7 @@ doctrine:
         user:     "%database_user%"
         password: "%database_password%"
         charset:  UTF8
+        schema_filter: ~^(?!blockchain)~
         default_table_options:
             charset: UTF8
             collate: UTF8

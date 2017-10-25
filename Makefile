@@ -16,8 +16,28 @@ d_db:
 d_php:
 	docker-compose exec --user=www-data php /bin/bash
 
-d_example:
-	docker-compose exec --user=www-data php bin/console app:example
+d_init_blockchain:
+	make d_i_db
+	docker-compose exec --user=www-data php bin/console app:init_blockchain_command
+	docker-compose exec --user=www-data php bin/console app:create_sample_transactions_command
+	docker-compose exec --user=www-data php bin/console app:check_blockchain_command
+	docker-compose exec --user=www-data php bin/console app:show_available_input_command
+
+d_publish_transaction d_p:
+	docker-compose exec --user=www-data php bin/console app:publish_transaction_command
+
+d_mine_block d_m:
+	docker-compose exec --user=www-data php bin/console app:mine_new_block_command
+
+d_show_available_input d_s:
+	docker-compose exec --user=www-data php bin/console app:show_available_input_command
+
+d_check_blockchain_validity:
+	docker-compose exec --user=www-data php bin/console app:check_blockchain_command
+
+d_check_transaction_pool_validity:
+	docker-compose exec --user=www-data php bin/console app:check_transaction_pool_command
+
 
 docker_doctrine_migrations_generate d_dmg:
 	docker-compose exec -T --user=www-data php bin/console doctrine:migrations:generate

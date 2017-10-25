@@ -38,13 +38,42 @@ services:
         class: AppBundle\Service\Blockchain
         public: true
         arguments:
-            - '%kernel.project_dir%'
-            - '@app.transaction_service'
+            - '@jms_serializer'
+            - '@app.blockchain_repository'
+            - '@app.block_service'
+            - '@app.mining_service'
     app.repository:
         class: AppBundle\Service\Repository
         public: true
     app.transaction_service:
-        class: AppBundle\Service\TransactionService
+        class: AppBundle\Service\Blockchain\TransactionService
         public: true
         arguments:
-            - '@app.repository'
+            - '@jms_serializer'
+            - '@app.security_service'
+    app.wallet_service:
+        public: true
+        class: AppBundle\Service\Blockchain\WalletService
+        arguments:
+            - '@app.repository.wallet'
+            - '@app.blockchain'
+    app.block_service:
+        class: AppBundle\Service\Blockchain\BlockService
+        arguments:
+            - '@app.transaction_service'
+            - '@snc_redis.default'
+            - '@jms_serializer'
+    app.repository.wallet:
+        class: AppBundle\Repository\Blockchain\WalletRepository
+        factory: 'Doctrine\ORM\EntityManagerInterface:getRepository'
+        arguments:
+            - AppBundle\Entity\Blockchain\Wallet
+    app.security_service:
+        class: AppBundle\Service\Security\SecurityService
+    app.blockchain_repository:
+        class: AppBundle\Repository\Blockchain\BlockchainRepository
+        arguments:
+            - '@database_connection'
+    app.mining_service:
+        class: AppBundle\Service\Blockchain\MiningService
+

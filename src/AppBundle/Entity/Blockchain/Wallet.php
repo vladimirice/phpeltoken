@@ -34,12 +34,17 @@ class Wallet
      */
     private $login;
 
-    public function init(array $data)
+    /**
+     * @param array $data
+     */
+    public function init(array $data): void
     {
-        $this->setPublicKey($data['publicKey']);
-        $this->setPrivateKey($data['privateKey']);
-        $this->setAddress($data['address']);
-        $this->setLogin($data['login']);
+        $this
+            ->setPublicKey($data['publicKey'])
+            ->setPrivateKey($data['privateKey'])
+            ->setAddress($data['address'])
+            ->setLogin($data['login'])
+        ;
     }
 
     /**

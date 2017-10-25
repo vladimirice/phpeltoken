@@ -18,4 +18,7 @@ COPY php-fpm-fcgi.ini $PHP_INI_DIR/php-fpm-fcgi.ini
 COPY ./php.ini /usr/local/etc/php/conf.d/
 
 COPY ./usermod.sh /usr/local/bin/usermod.sh
+
+
+RUN pecl install redis && docker-php-ext-enable redis
 ENTRYPOINT ["/usr/local/bin/usermod.sh"]

@@ -2,137 +2,300 @@
 
 namespace AppBundle\Service;
 
-use AppBundle\Model\Block;
-use AppBundle\Model\Transaction;
+use AppBundle\Entity\Blockchain\Wallet;
+use AppBundle\Exception\Blockchain\AvailableTransactionIsAbsentException;
+use AppBundle\Exception\Blockchain\BlockchainDoesNotExistException;
+use AppBundle\Exception\Blockchain\BlockchainException;
+use AppBundle\Exception\Blockchain\BlockIsNotValidException;
+use AppBundle\Exception\Blockchain\BlockMiningException;
+use AppBundle\Exception\Blockchain\BlockProofIsNotValid;
+use AppBundle\Model\Blockchain\Block;
+use AppBundle\Model\Blockchain\InputOutputDto;
+use AppBundle\Model\Blockchain\Transaction;
+use AppBundle\Repository\Blockchain\BlockchainRepository;
+use AppBundle\Service\Blockchain\BlockService;
+use AppBundle\Service\Blockchain\MiningService;
+use Doctrine\Common\Collections\ArrayCollection;
+use JMS\Serializer\SerializerInterface;
 
 class Blockchain
 {
-    /**
-     * @var string
-     */
-    private $projectDir;
+    /** @var ArrayCollection */
+    private $chain;
 
-    private $chain = [];
-    private $transactions = [];
+    /** @var  BlockchainRepository */
+    private $blockchainRepository;
 
-    private $proofZeros = '0';
+    /** @var  BlockService */
+    private $blockService;
 
-    private $systemFakeSenderAddress = '0';
-    private $minerReward = 25;
-
-    /**
-     * @var TransactionService
-     */
-    private $transactionService;
-
-    private const GENESIS_BLOCK_INDEX = 1;
-
-    private const GENESIS_PROOF = 5;
-    private const GENESIS_EMISSION = 50; // get from settings
-    private const CREATOR_ADDRESS = 'creator'; // get from wallets
+    /** @var  MiningService */
+    private $miningService;
 
     /**
      * Blockchain constructor.
-     * @param string             $projectDir
-     * @param TransactionService $transactionService
+     * @param SerializerInterface  $serializer
+     * @param BlockchainRepository $blockchainRepository
+     * @param BlockService         $blockService
+     * @param MiningService        $miningService
      */
     public function __construct(
-        string $projectDir,
-        TransactionService $transactionService
+        SerializerInterface $serializer,
+        BlockchainRepository $blockchainRepository,
+        BlockService $blockService,
+        MiningService $miningService
     ) {
-        $this->projectDir = $projectDir;
-        $this->transactionService = $transactionService;
+        $this->blockchainRepository = $blockchainRepository;
+        $this->blockService = $blockService;
 
-        if ($this->load() === true) {
-            return;
-        }
-
-        $this->transactionService->addGenesisTransaction();
-
-        $this->addTransaction($transaction);
-
-        $block = new Block(
-            self::GENESIS_BLOCK_INDEX,
-            $this->transactions,
-            self::GENESIS_PROOF,
-            ''
-        );
-
-        $this->chain[] = $block->getAsArray();
-
-        $this->save();
+        $this->chain = new ArrayCollection();
+        $this->miningService = $miningService;
 
         $this->load();
     }
 
     /**
+     * #refactor - split to methods
+     * @param Wallet[] $wallets
+     * @return void
+     */
+    public function checkBlockchain(array $wallets): void
+    {
+        $chain = $this->getChain();
+
+        $lastBlock = null;
+        foreach ($chain as $index => $block) {
+            if ($index === 1) {
+                $lastBlock = $block;
+                // skip genesis block checking
+                continue;
+            }
+
+            $this->blockService->checkBlock($block);
+
+            $isProofValid = $this->miningService->isProofValid(
+                $lastBlock->getProof(),
+                $block->getProof(),
+                $this->blockService->getTransactionPoolHashString($block->getTransactions())
+            );
+
+            if ($isProofValid === false) {
+                throw new BlockIsNotValidException('Proof is not valid for block with index: ' . $block->getIndex());
+            }
+
+            if ($block->getIndex() - $lastBlock->getIndex() !== 1) {
+                throw new BlockIsNotValidException('Block index is not correct');
+            }
+            if ($block->getTimestamp() < $lastBlock->getTimestamp()) {
+                throw new BlockIsNotValidException('Block timestamp is less than previous block timestamp');
+            }
+
+            if ($block->getPreviousHash() !== $lastBlock->getHash()) {
+                throw new BlockIsNotValidException(
+                    'Previous block hash is not valid for block with index: ' . $block->getIndex()
+                );
+            }
+
+            if (!$this->areAllBlockTransactionsValid($block, $wallets)) {
+                throw new BlockIsNotValidException(
+                    'Not all transactions of block is valid. Index is: ' . $block->getIndex()
+                );
+            }
+
+            $lastBlock = $block;
+        }
+    }
+
+    /**
+     * @param Block $block
+     * @param array $wallets
+     * @return bool
+     */
+    public function areAllBlockTransactionsValid(Block $block, array $wallets): bool
+    {
+        $transactions = $block->getTransactions();
+
+        $validTransactions = $this->getValidOnlyPoolTransactions($wallets, $transactions);
+
+        return \count($transactions) === \count($validTransactions);
+    }
+
+    /**
+     * @param array         $wallets
+     * @param Transaction[] $transactions
      * @return array
      */
-    public function getChain(): array
+    public function getValidOnlyPoolTransactions(array $wallets, array $transactions): array
+    {
+        $validTransactions = [];
+        foreach ($transactions as $transaction) {
+            if ($this->blockService->isMinerTransaction($transaction)) {
+                // #docs there is no normal miner transaction checker
+                $validTransactions[] = $transaction;
+            }
+
+            if (!isset($wallets[$transaction->getSenderAddress()])) {
+                continue;
+            }
+
+            if (!isset($wallets[$transaction->getRecipientAddress()])) {
+                continue;
+            }
+
+            $senderWallet = $wallets[$transaction->getSenderAddress()];
+
+            if (!$this->blockService->isTransactionValid($transaction, $senderWallet)) {
+                continue;
+            }
+
+            $blockIndex = $transaction->getPreviousBlockIndex();
+            $previousBlock = $this->getBlockFromChainByIndex($blockIndex);
+
+            if ($previousBlock === null) {
+                continue;
+            }
+
+            if ($this->isPreviousTransactionExist($previousBlock->getTransactions(), $transaction)) {
+                $validTransactions[] = $transaction;
+            }
+        }
+
+        return $validTransactions;
+    }
+
+    /**
+     * @param Wallet[] $wallets
+     * @return InputOutputDto[]
+     */
+    public function checkAndRewriteTransactionPool(array $wallets): array
+    {
+        $transactions = $this->getTransactionPool();
+
+        $validTransactions = $this->getValidOnlyPoolTransactions($wallets, $transactions);
+
+        // #refactor - do not rewrite if everything is ok
+        $this->blockService->rewriteTransactionPool($validTransactions);
+
+        return $validTransactions;
+    }
+
+    /**
+     * @param Wallet $senderWallet
+     * @param Wallet $recipientWallet
+     * @param int    $amount
+     */
+    public function addTransactionToPool(
+        Wallet $senderWallet,
+        Wallet $recipientWallet,
+        int $amount
+    ): void {
+        $this->throwExceptionIfBlockchainEmpty();
+
+        $senderAddress = $senderWallet->getAddress();
+
+        $availableInput = $this->getAvailableInput($senderAddress, $amount);
+        if ($availableInput === null) {
+            throw new AvailableTransactionIsAbsentException('Available transaction is absent');
+        }
+
+        $this->blockService->addRegularTransactionToPool(
+            $senderWallet,
+            $recipientWallet->getAddress(),
+            $availableInput
+        );
+    }
+
+    /**
+     * @return array
+     */
+    public function getTransactionPool(): array
+    {
+        return $this->blockService->getTransactionPool();
+    }
+
+    /**
+     * @param Wallet $creatorWallet
+     * @return void
+     */
+    public function createBlockchain(Wallet $creatorWallet): void
+    {
+        $this->load();
+
+        if (!$this->chain->isEmpty()) {
+            throw new BlockchainException('Blockchain is already exist.');
+        }
+
+        $block = $this->blockService->createGenesisBlock($creatorWallet);
+        $this->addBlockToChain($block);
+    }
+
+    /**
+     * @return ArrayCollection|Block[]
+     */
+    public function getChain(): ArrayCollection
     {
         return $this->chain;
     }
 
     /**
-     * @param Transaction $transaction
+     * #refactor
+     * @param string $address
+     * @return InputOutputDto[]
      */
-    public function addTransaction(Transaction $transaction): void
+    public function getAvailableInputs(string $address) : array
     {
-        $this->transactions[$transaction->getChecksum()] = $transaction->getAsArray();
-    }
+        $inputs = [];
+        $outputs = [];
+        foreach ($this->getChain() as $block) {
+            $transactions = $block->getTransactions();
 
-    /**
-     * @param int    $nextProof
-     * @param string $minerAddress
-     */
-    public function createNewBlockAndAddToChain(int $nextProof, string $minerAddress): void
-    {
-        if (!$this->isProofValid($this->getPreviousBlockProof(), $nextProof)) {
-            throw new \RuntimeException('Proof is not valid');
+            foreach ($transactions as $transaction) {
+                if ($transaction->isSender($address)) {
+                    $outputs[$transaction->getPreviousTransactionHash()] =
+                        new InputOutputDto($block->getIndex(), $transaction);
+                } elseif ($transaction->isRecipient($address)) {
+                    $inputs[$transaction->getHash()] = new InputOutputDto($block->getIndex(), $transaction);
+                }
+            }
         }
 
-        $this->addMinerRewardTransaction($minerAddress);
-
-        $block = new Block(
-            $this->getPreviousBlockIndex() + 1,
-            array_values($this->transactions),
-            $nextProof,
-            $this->getPreviousBlockHash()
-        );
-
-        $this->chain[] = $block->getAsArray();
-        $this->transactions = [];
-
-        $this->save();
+        return array_diff_key($inputs, $outputs);
     }
 
     /**
-     * @return int
+     * @param Wallet   $minerWallet
+     * @param Wallet[] $wallets
      */
-    public function generateNextProof(): int
+    public function mineNewBlock(Wallet $minerWallet, array $wallets): void
     {
-        $lastProof = $this->getPreviousBlockProof();
+        $this->checkAndRewriteTransactionPool($wallets);
 
-        $nextProof = 0;
-        while ($this->isProofValid($lastProof, $nextProof) === false) {
-            $nextProof++;
+        if ($this->blockService->isTransactionPoolEmpty()) {
+            throw new BlockMiningException('Transaction pool is empty');
         }
 
-        return $nextProof;
+        $this->blockService->addMinerRewardTransaction($minerWallet->getAddress());
+
+        // #refactor - create named methods, ext. for pool and for block
+        $poolHash = $this->blockService->getTransactionPoolHashString($this->getTransactionPool());
+
+        $nextProof = $this->miningService->calculateNextProof(
+            $this->getPreviousBlockProof(),
+            $poolHash
+        );
+
+        $this->createNewBlockAndAddToChain($nextProof, $poolHash);
     }
 
     /**
-     * @param string $minerAddress
+     * #refactor - method name is not ok
+     * @return void
      */
-    private function addMinerRewardTransaction(string $minerAddress): void
+    public function throwExceptionIfBlockchainEmpty(): void
     {
-        $transaction = new Transaction(
-            $this->systemFakeSenderAddress,
-            $minerAddress,
-            $this->minerReward
-        );
-
-        $this->addTransaction($transaction);
+        if ($this->getChain()->isEmpty()) {
+            throw new BlockchainDoesNotExistException('Blockchain does not exists');
+        }
     }
 
     /**
@@ -140,78 +303,106 @@ class Blockchain
      */
     private function getPreviousBlockProof()
     {
-        return $this->getLastBlock()['proof'];
+        return $this->getLastBlock()->getProof();
     }
 
     /**
-     * @return mixed
+     * @param Block $block
      */
-    private function getPreviousBlockIndex()
+    private function addBlockToChain(Block $block): void
     {
-        return $this->getLastBlock()['index'];
+        $blockJson = $this->blockService->serializeBlock($block);
+        $this->blockchainRepository->insertBlock($block->getIndex(), $blockJson);
+
+        // #refactor
+        $this->load();
     }
 
     /**
-     * @return mixed
+     * @return void
      */
-    private function getPreviousBlockHash()
+    private function load() : void
     {
-        return $this->getLastBlock()['hash'];
+        $this->chain = new ArrayCollection();
+        $blocks = $this->blockchainRepository->getAllBlocks();
+
+        foreach ($blocks as $block) {
+            $deserialized = $this->blockService->deserializeBlock($block['block_json']);
+            $this->chain[$deserialized->getIndex()] = $deserialized;
+        }
     }
 
     /**
-     * Validates the Proof: Does hash(last_proof, proof) contain 4 leading zeroes?
-     * @param int $lastProof Previous Proof
-     * @param int $proof     Current Proof
-     * @return bool True if correct, False if not.
+     * @return Block
      */
-    private function isProofValid($lastProof, $proof) : bool
+    private function getLastBlock() : Block
     {
-        $hash = hash('sha256', $lastProof * $proof);
-
-        return substr($hash, -1) === $this->proofZeros;
+        return $this->chain->last();
     }
 
     /**
-     *
+     * @param int $index
+     * @return Block|null
      */
-    private function save(): void
+    private function getBlockFromChainByIndex(int $index): ?Block
     {
-        file_put_contents($this->getFile(), json_encode($this->chain));
-    }
-
-    /**
-     * @return bool
-     */
-    private function load() : bool
-    {
-        if (!file_exists($this->getFile())) {
-            return false;
+        if (!isset($this->chain[$index])) {
+            return null;
         }
 
-        $json = file_get_contents($this->getFile());
-
-        $this->transactions = [];
-        $this->chain = json_decode($json, true);
-
-        return true;
+        return $this->chain[$index];
     }
 
     /**
-     * @return string
+     * @param string $senderAddress
+     * @param int    $amount
+     * @return InputOutputDto|null
      */
-    private function getFile(): string
+    private function getAvailableInput(string $senderAddress, int $amount): ?InputOutputDto
     {
-        return $this->projectDir . '/var/blockchain.txt';
+        $inputs = $this->getAvailableInputs($senderAddress);
+
+        foreach ($inputs as $input) {
+            if ($input->isAvailableForAmount($amount)) {
+                return $input;
+            }
+        }
+
+        return null;
     }
 
     /**
-     * @return mixed
+     * @param int    $nextProof
+     * @param string $poolHash
      */
-    private function getLastBlock()
+    private function createNewBlockAndAddToChain(int $nextProof, string $poolHash): void
     {
-        $lastIndex = count($this->chain) - 1;
+        if (!$this->miningService->isProofValid($this->getPreviousBlockProof(), $nextProof, $poolHash)) {
+            throw new BlockProofIsNotValid('Block Proof is not valid');
+        }
 
-        return $this->chain[$lastIndex];
+        $lastBlock = $this->getLastBlock();
+
+        $block = $this->blockService->createBlock($lastBlock, $nextProof);
+
+        $this->addBlockToChain($block);
+    }
+
+    /**
+     * @param Transaction[] $previousTransactions
+     * @param Transaction   $transaction
+     * @return bool
+     */
+    private function isPreviousTransactionExist(array $previousTransactions, Transaction $transaction) : bool
+    {
+        foreach ($previousTransactions as $previousTransaction) {
+            if ($previousTransaction->getHash() === $transaction->getPreviousTransactionHash()
+                && $previousTransaction->getAmount() === $transaction->getAmount()) {
+
+                return true;
+            }
+        }
+
+        return false;
     }
 }

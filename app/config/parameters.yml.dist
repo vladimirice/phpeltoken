@@ -9,6 +9,9 @@ parameters:
     mailer_host: 127.0.0.1
     mailer_user: noreply@phpeltoken.com
     mailer_password: ~
+    redis.host:     174.18.211.5
+    redis.port:     6379
+    redis.database: 1
 
     # A secret key that's used to generate certain security-related tokens
     secret: ThisTokenIsNotSoSecretChangeIt

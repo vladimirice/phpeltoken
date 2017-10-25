@@ -30,8 +30,10 @@ services:
         build: ./etc/docker/php
         depends_on:
             - db
+            - redis
         links:
             - db
+            - redis
         volumes:
             - .:/var/www/phpeltoken.com
             - .:/var/www/phpeltoken.com:cached
@@ -65,3 +67,12 @@ services:
             - "5432"
         ports:
             - "5432:5432"
+    redis:
+        container_name: phpeltoken_redis
+        hostname: redis.phpeltoken.dev
+        image: redis:3.2
+        expose:
+            - "6379"
+        networks:
+            phpeltoken_network:
+                ipv4_address: 174.18.211.5

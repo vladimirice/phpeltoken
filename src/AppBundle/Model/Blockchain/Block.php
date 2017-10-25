@@ -1,54 +1,61 @@
 <?php
 
-namespace AppBundle\Model\Transaction;
+namespace AppBundle\Model\Blockchain;
+
+use JMS\Serializer\Annotation as JMSAnnotation;
 
 class Block
 {
     /**
      * @var int
+     * @JMSAnnotation\Type("int")
      */
     private $index;
     /**
      * @var int
+     * @JMSAnnotation\Type("int")
      */
     private $timestamp;
     /**
      * @var array
+     * @JMSAnnotation\Type("array<AppBundle\Model\Blockchain\Transaction>")
      */
     private $transactions;
     /**
      * @var int
+     * @JMSAnnotation\Type("int")
      */
     private $proof;
     /**
      * @var string
+     * @JMSAnnotation\Type("string")
      */
     private $previousHash;
     /**
      * @var string
+     * @JMSAnnotation\Type("string")
+     * @JMSAnnotation\Groups({"save"})
      */
     private $hash;
 
     /**
      * Block constructor.
      * @param int    $index
-     * @param array  $transactions
      * @param int    $proof
      * @param string $previousHash
+     * @param array  $transactions
      */
     public function __construct(
         int $index,
-        array $transactions,
         int $proof,
-        string $previousHash
+        string $previousHash,
+        array $transactions
     ) {
         $this->index = $index;
         $this->timestamp = time();
         $this->transactions = $transactions;
         $this->proof = $proof;
         $this->previousHash = $previousHash;
-
-        $this->generateHash();
     }
 
     /**
@@ -68,6 +75,17 @@ class Block
     }
 
     /**
+     * @param string $hash
+     * @return $this
+     */
+    public function setHash(string $hash)
+    {
+        $this->hash = $hash;
+
+        return $this;
+    }
+
+    /**
      * @return int
      */
     public function getProof(): int
@@ -76,27 +94,26 @@ class Block
     }
 
     /**
-     * @return array
+     * @return Transaction[]
      */
-    public function getAsArray() : array
+    public function getTransactions(): array
     {
-        return [
-            'index'         => $this->index,
-            'timestamp'     => $this->timestamp,
-            'transactions'  => $this->transactions,
-            'proof'         => $this->proof,
-            'previousHash'  => $this->previousHash,
-            'hash'          => $this->hash,
-        ];
+        return $this->transactions;
     }
 
     /**
-     * @return void
+     * @return int
      */
-    private function generateHash(): void
+    public function getTimestamp(): int
     {
-        $asArray = $this->getAsArray();
+        return $this->timestamp;
+    }
 
-        $this->hash = md5(json_encode($asArray));
+    /**
+     * @return string
+     */
+    public function getPreviousHash(): string
+    {
+        return $this->previousHash;
     }
 }
