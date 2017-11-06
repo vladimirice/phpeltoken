@@ -54,7 +54,7 @@ make d_mine_block
 ## Structure
 
 Models - condition only, no business logic, DDD features like named methods isRecipient
-* AppBundle/Model/Blockchain/Block.php
+* [Block](src/AppBundle/Model/Blockchain/Block.php)
 * AppBundle/Model/Blockchain/Transaction.php
 
 DTO:
