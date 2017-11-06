@@ -42,31 +42,32 @@ make d_mine_block
 
 ## Programming features:
 * Code sniffer and PHP Extended PHPStorm validations. All files are "green marked"
-* Custom exception classes, ex. AppBundle/Exception/Blockchain/BlockchainDoesNotExistException.php
+* Custom exception classes, ex. [BlockchainDoesNotExistException](src/AppBundle/Exception/Blockchain/BlockchainDoesNotExistException.php)
 * fixtures and migrations for postgresql
 * small methods - one task for everyone
 * Block and transaction hash calculations are inside services - models are free from these details.
-* DDD-featured method, ex.: 
-\AppBundle\Model\Blockchain\Transaction::isRecipient
-\AppBundle\Service\Blockchain\TransactionService::serializeTransaction
-\AppBundle\Service\Blockchain\TransactionService::serializeTransactionForHash
+* DDD-featured method
 
 ## Structure
 
 Models - condition only, no business logic, DDD features like named methods isRecipient
 * [Block](src/AppBundle/Model/Blockchain/Block.php)
-* AppBundle/Model/Blockchain/Transaction.php
+* [Transaction](src/AppBundle/Model/Blockchain/Transaction.php)
 
 DTO:
-* AppBundle/Model/Blockchain/InputOutputDto.php
+* [InputOutputDto](src/AppBundle/Model/Blockchain/InputOutputDto.php)
 
 Services (business logic):
-* AppBundle/Service/Blockchain.php - for blocks as chain. It includes other services.
-* AppBundle/Service/Blockchain/BlockService.php - for separate block (not blocks!). It includes TransactionService.
-* AppBundle/Service/Blockchain/TransactionService.php - for pool of transactions
-* AppBundle/Service/Blockchain/MiningService.php - mining-related logic
-* AppBundle/Service/Blockchain/WalletService.php - wallet-related logic (fetch only)
-* AppBundle/Service/Security/SecurityService.php - asymmetric cryptography related logic
+* [Blockchain](src/AppBundle/Service/Blockchain.php) - for blocks as chain. It includes other services.
+* [BlockService](src/AppBundle/Service/Blockchain/BlockService.php) - for separate block (not blocks!). It includes TransactionService.
+* [TransactionService](src/AppBundle/Service/Blockchain/TransactionService.php) - for pool of transactions
+* [MiningService](src/AppBundle/Service/Blockchain/MiningService.php) - mining-related logic
+* [WalletService](src/AppBundle/Service/Blockchain/WalletService.php) - wallet-related logic (fetch only)
+* [SecurityService](src/AppBundle/Service/Security/SecurityService.php) - asymmetric cryptography related logic
+
+Other:
+* [docker-compose file](docker-compose.yml)
+* [PHP Dockerfile](etc/docker/php/Dockerfile)
 
 Persistence:
 * wallets and serialized blocks - in postgreSQL
